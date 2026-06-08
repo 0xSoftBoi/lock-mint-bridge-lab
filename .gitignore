@@ -1,0 +1,19 @@
+# Foundry
+out/
+cache/
+broadcast/
+
+# Docs build
+docs/
+
+# Key material — never commit (defense in depth; this repo holds none)
+*keypair*.json
+*.key
+*.pem
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
