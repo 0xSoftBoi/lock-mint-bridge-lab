@@ -86,6 +86,40 @@ forge install   # pulls forge-std
 forge test      # 27 tests (incl. the ML-DSA verifier); invariants at 512 × 100
 ```
 
+## Live demo: post-quantum atomic settlement
+
+A runnable end-to-end settlement — Alice bridges 100 out and back — with every value-moving
+step gated by an **ML-DSA** ([`MlDsaAttestationVerifier`](src/MlDsaAttestationVerifier.sol))
+signature. Shows all three properties at once: **compliant** (a forged attestation mints
+nothing), **atomic** (one terminal outcome per commit), **solvent** (supply ≤ collateral
+throughout).
+
+```
+forge script script/DemoAtomicSettlement.s.sol -vv
+```
+
+```text
+== Logs ==
+  verifier = post-quantum ML-DSA gate (EIP-8051), authorized 1 operator key
+  1. LOCK     alice locks 100 on source
+              supply <= collateral: 0 <= 100
+  2. MINT     operator's ML-DSA attestation verified -> 100 wMOCK minted
+              supply <= collateral: 100 <= 100
+  3. ATTACK   forged mint REVERTED (gate held) -> adversary minted 0
+              supply <= collateral: 100 <= 100
+  4. BURN     alice burns 100 wMOCK to start the return leg
+              supply <= collateral: 0 <= 100
+  5. UNLOCK   operator's ML-DSA attestation verified -> 100 returned to alice
+              supply <= collateral: 0 <= 0
+  6. ATOMIC   refund-after-unlock REVERTED -> exactly one terminal outcome
+  == DEMO COMPLETE: PQ-gated settlement, atomic, solvent throughout ==
+```
+
+Honest boundary: ML-DSA verification is the EIP-8051 precompile's job (`0x13` on a chain that
+has it). No public testnet ships it yet, so the script uses a deployed stand-in that accepts the
+operator's exact signed tuple — the **bridge** logic (binding, gating, atomicity, solvency) runs
+for real.
+
 ## Scope / honesty
 
 The supply≤collateral guarantee is, end-to-end, an *operator-coordination* property
