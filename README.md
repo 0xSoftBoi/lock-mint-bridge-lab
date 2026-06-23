@@ -47,9 +47,11 @@ require(verifier.verify(digest, attestation), "unauthorized");
   unlock signature being reused as a refund.
 - The verifier is **pluggable** ([`IAttestationVerifier`](src/IAttestationVerifier.sol)):
   ECDSA on EVM destinations ([`EcdsaAttestationVerifier`](src/EcdsaAttestationVerifier.sol)),
-  or a post-quantum lattice verifier on a chain you control — without touching the
-  vault/adapter logic. (Why a lattice signature, and why *not* wrapped in a SNARK, is
-  the subject of the second post.)
+  or a post-quantum **ML-DSA** verifier ([`MlDsaAttestationVerifier`](src/MlDsaAttestationVerifier.sol))
+  that delegates the lattice math to the [EIP-8051](https://eips.ethereum.org/EIPS/eip-8051)
+  precompile — without touching the vault/adapter logic. (Why a lattice signature, and why
+  *not* wrapped in a SNARK, is the subject of the second post.) The interface is written up
+  as a draft ERC: [`spec/ERC-DRAFT-pq-attestation-verifier.md`](spec/ERC-DRAFT-pq-attestation-verifier.md).
 - A `commitId` can reach at most one terminal outcome `{UNLOCKED, REFUNDED}`, enforced
   on-chain — that's the cross-domain "minted **and** refunded" double-spend closed.
 
@@ -61,6 +63,7 @@ require(verifier.verify(digest, attestation), "unauthorized");
 | [`MintAdapter`](src/MintAdapter.sol) | Mints the wrapped token against an attestation; replay-protected by `commitId`; burns to start the return leg. |
 | [`WrappedToken`](src/WrappedToken.sol) | Destination ERC-20. Admin ≠ minter (an admin key must not be a silent parallel minter). |
 | [`EcdsaAttestationVerifier`](src/EcdsaAttestationVerifier.sol) | Operator-whitelist ECDSA gate (EIP-2 low-s, no zero signer). |
+| [`MlDsaAttestationVerifier`](src/MlDsaAttestationVerifier.sol) | Post-quantum gate: commits to an ML-DSA-65 (FIPS-204) public-key hash; forwards to the EIP-8051 precompile. Clean-room reference. |
 
 ## Tests (`forge test`)
 
@@ -80,7 +83,7 @@ require(verifier.verify(digest, attestation), "unauthorized");
 
 ```
 forge install   # pulls forge-std
-forge test      # 17 tests; invariants at 512 × 100
+forge test      # 27 tests (incl. the ML-DSA verifier); invariants at 512 × 100
 ```
 
 ## Scope / honesty
