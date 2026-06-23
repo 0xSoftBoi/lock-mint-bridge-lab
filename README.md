@@ -83,7 +83,7 @@ require(verifier.verify(digest, attestation), "unauthorized");
 
 ```
 forge install   # pulls forge-std
-forge test      # 27 tests (incl. the ML-DSA verifier); invariants at 512 × 100
+forge test      # 29 tests (incl. the ML-DSA verifier); invariants at 512 × 100
 ```
 
 ## Scope / honesty
