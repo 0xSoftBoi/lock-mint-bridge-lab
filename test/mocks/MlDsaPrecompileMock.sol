@@ -11,17 +11,20 @@ pragma solidity ^0.8.20;
 /// precompile's job on a real EIP-8051 chain. Swap in real NIST FIPS-204 KAT bytes and
 /// the same exact-match check holds.
 contract MlDsaPrecompileMock {
-    /// keccak256 of the one input tuple that should verify as valid.
-    bytes32 public valid;
+    /// The set of input tuples that verify as valid (keyed by keccak256 of the raw
+    /// `message || signature || pubKey` bytes). A mapping rather than a single slot so
+    /// multiple distinct attestations can be valid at once — needed to model concurrent
+    /// operations and replay scenarios, not just a single sequential happy path.
+    mapping(bytes32 => bool) public isValid;
 
-    /// Register the canonical valid input (message || signature || pubKey).
+    /// Register a valid input tuple (message || signature || pubKey).
     function setValid(bytes calldata input) external {
-        valid = keccak256(input);
+        isValid[keccak256(input)] = true;
     }
 
     /// EIP-8051 ABI: raw input in, 32-byte 1/0 out. View-safe (no state writes) so it
     /// works under STATICCALL.
     fallback(bytes calldata input) external returns (bytes memory) {
-        return abi.encode(keccak256(input) == valid ? uint256(1) : uint256(0));
+        return abi.encode(isValid[keccak256(input)] ? uint256(1) : uint256(0));
     }
 }

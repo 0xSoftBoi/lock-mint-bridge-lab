@@ -43,7 +43,7 @@ does*, and makes the ECDSA → post-quantum migration a one-line deployment chan
 
 ## Specification
 
-The key words MUST, MUST NOT, SHOULD are to be interpreted as in RFC 2119.
+The key words MUST, MUST NOT, SHOULD, MAY are to be interpreted as in RFC 2119.
 
 ```solidity
 interface IAttestationVerifier {
@@ -66,7 +66,9 @@ interface IAttestationVerifier {
 
 ### Attestation encodings (recommended)
 
-- ECDSA: `attestation = abi.encodePacked(r, s, v)` (65 bytes) over the EIP-191 hash of `digest`.
+- ECDSA: `attestation = abi.encodePacked(r, s, v)` (65 bytes) over the EIP-191 **personal-sign**
+  hash of `digest` (prefix `\x19Ethereum Signed Message:\n32`). Verifiers MUST enforce low-s
+  (EIP-2) to reject the malleable high-s twin.
 - ML-DSA (EIP-8051): `attestation = abi.encode(bytes expandedPublicKey, bytes signature)`;
   the verifier commits to `keccak256(expandedPublicKey)` on-chain and forwards
   `digest || signature || expandedPublicKey` to the precompile.
@@ -101,6 +103,8 @@ wrapped trivially.
   deployments/chains.
 - A post-quantum verifier inherits the precompile's correctness and gas; verify the
   precompile is present and canonical on the target chain.
+- ECDSA verifiers MUST enforce canonical (low-s, EIP-2) signatures: accepting both the high-s
+  and low-s twins of one signature would let a single event authorize two distinct actions.
 
 ## References
 

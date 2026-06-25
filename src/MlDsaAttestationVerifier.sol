@@ -84,7 +84,11 @@ contract MlDsaAttestationVerifier is IAttestationVerifier {
     /// @dev External so `verify` can wrap it in try/catch to neutralize decode reverts.
     /// Restricted to self-calls; not part of the public surface.
     function checkAttestation(bytes32 digest, bytes calldata attestation) external view returns (bool) {
-        require(msg.sender == address(this), "self only");
+        // Self-only, but consistent with the "never reverts → false" contract above.
+        if (msg.sender != address(this)) return false;
+        // An unconfigured verifier (key never set) authorizes nothing — make it explicit
+        // rather than relying on a zero hash never matching a real key.
+        if (authorizedKeyHash == bytes32(0)) return false;
 
         (bytes memory pubKey, bytes memory signature) = abi.decode(attestation, (bytes, bytes));
         if (pubKey.length != PK_LEN || signature.length != SIG_LEN) return false;
@@ -93,8 +97,10 @@ contract MlDsaAttestationVerifier is IAttestationVerifier {
         // EIP-8051 VERIFY_MLDSA_ETH input: message(32) || signature(2420) || pubKey(20512).
         bytes memory input = abi.encodePacked(digest, signature, pubKey);
 
+        // EIP-8051 returns exactly 32 bytes (1/0); reject anything else rather than
+        // letting abi.decode silently ignore trailing bytes.
         (bool callOk, bytes memory ret) = precompile.staticcall(input);
-        if (!callOk || ret.length < 32) return false;
+        if (!callOk || ret.length != 32) return false;
         return abi.decode(ret, (uint256)) == 1;
     }
 }

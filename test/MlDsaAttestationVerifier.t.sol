@@ -99,11 +99,33 @@ contract MlDsaAttestationVerifierTest is Test {
         assertEq(v.precompile(), address(0x13));
     }
 
+    function test_unconfigured_verifier_authorizes_nothing() public {
+        // key hash never set (bytes32(0)) → even a "valid" tuple is rejected.
+        MlDsaAttestationVerifier v = new MlDsaAttestationVerifier(owner, bytes32(0), address(precompile));
+        precompile.setValid(abi.encodePacked(DIGEST, signature, pubKey));
+        assertFalse(v.verify(DIGEST, _attestation(pubKey, signature)));
+    }
+
+    function test_rejects_precompile_output_that_is_not_32_bytes() public {
+        OversizedPrecompile bad = new OversizedPrecompile();
+        MlDsaAttestationVerifier v = new MlDsaAttestationVerifier(owner, keccak256(pubKey), address(bad));
+        // The (mis-behaving) precompile returns 64 bytes; strict length check rejects it.
+        assertFalse(v.verify(DIGEST, _attestation(pubKey, signature)));
+    }
+
     /// Deterministic byte filler — cheap, no keccak per byte.
     function _fill(uint256 n, uint8 seed) internal pure returns (bytes memory b) {
         b = new bytes(n);
         for (uint256 i; i < n; ++i) {
             b[i] = bytes1(uint8((i * 31 + seed) & 0xff));
         }
+    }
+}
+
+/// A precompile that returns 64 bytes instead of EIP-8051's 32 — to test the strict
+/// output-length check rejects malformed precompile responses.
+contract OversizedPrecompile {
+    fallback(bytes calldata) external returns (bytes memory) {
+        return abi.encode(uint256(1), uint256(1));
     }
 }
